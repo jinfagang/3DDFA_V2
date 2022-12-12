@@ -1,4 +1,5 @@
 import argparse
+import pickle
 import sys
 import torch
 from bfm.bfm import BFMModel
@@ -48,9 +49,16 @@ class TDDFA_Pts2D(nn.Module):
         self.w_shp_base = torch.as_tensor(self.w_shp_base)
         self.w_exp_base = torch.as_tensor(self.w_exp_base)
 
+        r = pickle.load(open('configs/param_mean_std_62d_120x120.pkl', "rb"))
+        self.param_mean = torch.as_tensor(r.get("mean"))
+        self.param_std = torch.as_tensor(r.get("std"))  # 62,
+
+
     def forward(self, x):
         param = self.model(x)
         print(param.shape)
+        param = param * self.param_std + self.param_mean
+        
         trans_dim, shape_dim, exp_dim = 12, 40, 10
         bs = param.shape[0]
         R_ = param[:, :trans_dim].reshape(bs, 3, -1)
