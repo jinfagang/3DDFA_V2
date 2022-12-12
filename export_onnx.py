@@ -49,35 +49,30 @@ class TDDFA_Pts2D(nn.Module):
         self.w_shp_base = torch.as_tensor(self.w_shp_base)
         self.w_exp_base = torch.as_tensor(self.w_exp_base)
 
-        r = pickle.load(open('configs/param_mean_std_62d_120x120.pkl', "rb"))
+        r = pickle.load(open("configs/param_mean_std_62d_120x120.pkl", "rb"))
         self.param_mean = torch.as_tensor(r.get("mean"))
         self.param_std = torch.as_tensor(r.get("std"))  # 62,
-
 
     def forward(self, x):
         param = self.model(x)
         print(param.shape)
         param = param * self.param_std + self.param_mean
-        
+
         trans_dim, shape_dim, exp_dim = 12, 40, 10
         bs = param.shape[0]
         R_ = param[:, :trans_dim].reshape(bs, 3, -1)
         print_shape(R_)
         R = R_[:, :, :3]
-        offset = R_[:, :,  -1].reshape(bs, 3, 1)
-        alpha_shp = param[:, trans_dim:trans_dim + shape_dim].reshape(bs, -1, 1)
-        alpha_exp = param[:, trans_dim + shape_dim:].reshape(bs, -1, 1)
+        offset = R_[:, :, -1].reshape(bs, 3, 1)
+        alpha_shp = param[:, trans_dim : trans_dim + shape_dim].reshape(bs, -1, 1)
+        alpha_exp = param[:, trans_dim + shape_dim :].reshape(bs, -1, 1)
 
-        print_shape(self.u_base, self.w_shp_base)
+        print_shape(self.u_base, self.w_shp_base, self.w_exp_base)
         print_shape(alpha_shp, alpha_exp)
-        # 204,40 @ 1,40
-        pts3d = (
-            R
-            @ (
-                self.u_base + self.w_shp_base @ alpha_shp + self.w_exp_base @ alpha_exp
-            ).reshape(bs, 3, -1)
-            + offset
-        )
+        # 204,1 + 204,40 @ 1,40,1  + 204,10 @ 1,10,1
+        pts3d = self.u_base + self.w_shp_base @ alpha_shp + self.w_exp_base @ alpha_exp
+        pts3d = R @ pts3d.reshape(bs, 3, -1)
+        pts3d = pts3d + offset
         print_shape(pts3d)
         return param, pts3d
 
