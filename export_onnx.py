@@ -19,6 +19,12 @@ be note the keypoints are sparsed not dense, it's not through BFM model yet.
 """
 
 
+def reshape_fortran(x, shape):
+    if len(x.shape) > 0:
+        x = x.permute(*reversed(range(len(x.shape))))
+    return x.reshape(*reversed(shape)).permute(*reversed(range(len(shape))))
+
+
 class TDDFA_Pts2D(nn.Module):
     def __init__(self, **kvs) -> None:
         super().__init__()
@@ -71,7 +77,8 @@ class TDDFA_Pts2D(nn.Module):
         print_shape(alpha_shp, alpha_exp)
         # 204,1 + 204,40 @ 1,40,1  + 204,10 @ 1,10,1
         pts3d = self.u_base + self.w_shp_base @ alpha_shp + self.w_exp_base @ alpha_exp
-        pts3d = R @ pts3d.reshape(bs, 3, -1)
+        pts3d = reshape_fortran(pts3d, [bs, 3, -1])
+        pts3d = R @ pts3d
         pts3d = pts3d + offset
         print_shape(pts3d)
         return param, pts3d
@@ -96,8 +103,11 @@ def convert_to_onnx(**kvs):
         input_names=["input"],
         output_names=["param", "pts3d"],
         do_constant_folding=True,
+        opset_version=13
     )
     print(f"Convert {checkpoint_fp} to {wfp} done.")
+    traced_model = torch.jit.trace(wrapmodel, (dummy_input,))
+    traced_model.save(wfp.replace(".onnx", ".pt"))
     return wfp
 
 
