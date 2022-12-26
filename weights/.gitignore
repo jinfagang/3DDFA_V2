@@ -1,3 +1,5 @@
 checkpoints/
 *.pth
 *.onnx
+*.pt
+*.mnn
