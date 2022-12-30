@@ -20,9 +20,10 @@ be note the keypoints are sparsed not dense, it's not through BFM model yet.
 """
 
 
-cfg_file = 'configs/mb1_120x120.yml'
+cfg_file = "configs/mb1_120x120.yml"
 cfg = yaml.load(open(cfg_file), Loader=yaml.SafeLoader)
-test_img = 'data/emma.jpg'
+test_img = "data/emma.jpg"
+
 
 def reshape_fortran(x, shape):
     if len(x.shape) > 0:
@@ -85,12 +86,18 @@ class TDDFA_Pts2D(nn.Module):
 
         R, offset, alpha_shp, alpha_exp = self._parse_param_batched(param)
         # vertex = torch.transpose((self.u_base + self.w_shp_base @ alpha_shp + self.w_exp_base @ alpha_exp).reshape(bs, -1, 3), 0, 1)
-        vertex = torch.transpose((self.u_base + self.w_shp_base @ alpha_shp + self.w_exp_base @ alpha_exp).reshape(bs, -1, 3), 1, 2)
+        vertex = torch.transpose(
+            (
+                self.u_base + self.w_shp_base @ alpha_shp + self.w_exp_base @ alpha_exp
+            ).reshape(bs, -1, 3),
+            1,
+            2,
+        )
         print_shape(R, offset, vertex)
         # pts3d =  torch.transpose(R@vertex + offset, 0, 1)
-        pts3d =  torch.transpose(R@vertex + offset, 1, 2)
+        pts3d = torch.transpose(R @ vertex + offset, 1, 2)
         return param, pts3d
-    
+
     @staticmethod
     def _parse_param_batched(param):
         n = param.shape[-1]
@@ -101,16 +108,16 @@ class TDDFA_Pts2D(nn.Module):
         elif n == 141:
             trans_dim, shape_dim, exp_dim = 12, 100, 29
         else:
-            raise Exception(f'Undefined templated param parsing rule')
+            raise Exception(f"Undefined templated param parsing rule")
 
         bs = param.shape[0]
         R_ = param[:, :trans_dim].reshape(bs, 3, -1)
         R = R_[:, :, :3]
         offset = R_[:, :, -1].reshape(bs, 3, 1)
-        alpha_shp = param[..., trans_dim:trans_dim + shape_dim].reshape(bs, -1, 1)
-        alpha_exp = param[..., trans_dim + shape_dim:].reshape(bs, -1, 1)
+        alpha_shp = param[..., trans_dim : trans_dim + shape_dim].reshape(bs, -1, 1)
+        alpha_exp = param[..., trans_dim + shape_dim :].reshape(bs, -1, 1)
         return R, offset, alpha_shp, alpha_exp
-    
+
     @staticmethod
     def _parse_param(param):
         """matrix pose form
@@ -126,14 +133,15 @@ class TDDFA_Pts2D(nn.Module):
         elif n == 141:
             trans_dim, shape_dim, exp_dim = 12, 100, 29
         else:
-            raise Exception(f'Undefined templated param parsing rule')
+            raise Exception(f"Undefined templated param parsing rule")
 
         R_ = param[..., :trans_dim].reshape(3, -1)
         R = R_[:, :3]
         offset = R_[:, -1].reshape(3, 1)
-        alpha_shp = param[..., trans_dim:trans_dim + shape_dim].reshape(-1, 1)
-        alpha_exp = param[..., trans_dim + shape_dim:].reshape(-1, 1)
+        alpha_shp = param[..., trans_dim : trans_dim + shape_dim].reshape(-1, 1)
+        alpha_exp = param[..., trans_dim + shape_dim :].reshape(-1, 1)
         return R, offset, alpha_shp, alpha_exp
+
 
 def convert_to_onnx(**kvs):
     # 1. load model
